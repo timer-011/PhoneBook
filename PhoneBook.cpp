@@ -157,8 +157,7 @@ struct TRIE
 
 	void del(string &s)
 	{
-		node *start = &root;
-		node *cur = start;
+		node *cur = &root;
 		int pf = 0;
 		for(int i = 0; i < s.size(); i++)
 		{
@@ -166,7 +165,7 @@ struct TRIE
 				return;
 
 			if(cur->end == true)
-				start = cur->v[s[i]], pf = i + 1;
+				pf = i;
 			
 			cur = cur->v[s[i]];
 		}
@@ -176,21 +175,22 @@ struct TRIE
 		cur->c.name = "";
 		cur->c.ph = "";
 		cur->c.add = "";
-		cur->c.email = "";		
+		cur->c.email = "";
 
 		for(auto next : cur->v)
 			if(next.second != NULL)
 				return;
 
-		// int cnt = 0;
-		// while(start != cur && cnt < 100)
-		// {
-		// 	node *t = start->v[s[pf]];
-		// 	delete start;
-		// 	start = t;
-			
-		// 	cnt++;
-		// }
+		cur = &root;
+		for(int i = 0; i < s.length(); i++)
+		{
+			node *t = cur->v[s[i]];
+			if(i > pf)
+				delete cur;
+
+			cur = t;
+		}
+
 	}
 
 } trie;
