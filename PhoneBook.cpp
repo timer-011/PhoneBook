@@ -181,16 +181,7 @@ struct TRIE
 			if(next.second != NULL)
 				return;
 
-		cur = &root;
-		for(int i = 0; i < s.length(); i++)
-		{
-			node *t = cur->v[s[i]];
-			if(i > pf)
-				delete cur;
-
-			cur = t;
-		}
-
+		delete cur;
 	}
 
 } trie;
