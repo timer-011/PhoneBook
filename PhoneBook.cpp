@@ -1,5 +1,8 @@
 #include <bits/stdc++.h>
+#include "mac.h"
 using namespace std;
+
+//-----------------------CONTACT OPERATIONS----------------------------------------------------
 
 struct contact
 {
@@ -19,7 +22,7 @@ fstream &operator >> (fstream &file, contact &c)
 	return file;
 }
 fstream fio, tio;
-
+//--------------------------------MAIN MENU--------------------------------------------
 void ShowMainMenu()
 {
 	system("cls");
@@ -36,7 +39,7 @@ void ShowMainMenu()
 	cout << "\n\t\tEnter your choice: ";
 
 }
-//-------------------------------------------------/
+//----------------------------SMALL FUNCTIONS & MESSAGES-------------------------------/
 
 void no_name()
 {
@@ -76,105 +79,182 @@ void ending()
 	system("pause");
 }
 
+//-----------------------------------TRIE-DATA-STUCTURE---------------------------------------------
+
+struct node
+{
+	char data = '?';	
+	contact c;
+
+	// node *v[26];
+	map < char, node * > v;
+	bool end = false;
+
+	node(){}
+	node(char val)
+	{
+		data = val;
+	}
+};
+
+struct TRIE
+{
+	node root;
+	
+	void insert(contact &c)
+	{
+		node *cur = &root;
+		for(int i = 0; i < c.name.size(); i++)
+		{
+			if(cur->v[c.name[i]] == NULL)
+				cur->v[c.name[i]] = new node(c.name[i]);
+
+			cur = cur->v[c.name[i]];
+		}
+		cur->c = c;
+		cur->end = true;
+
+		return;
+	}
+	//	node root(r),	insert(val, &root)	//	data variable isnt req.
+	//								/----------------------------------/
+
+	void list_all(string name, node *cur, void (*func)(contact &c))
+	{
+		if(cur->end == true)
+		{
+			func(cur->c);
+			// display(cur->c);
+		}
+
+		for(auto next : cur->v)
+			if(next.second != NULL)
+				list_all(name + cur->data, next.second, func);
+
+		return;
+	}
+	//								/----------------------------------/
+
+	bool search(string &s)
+	{
+		node *cur = &root;
+		int n = s.length();
+		for(int i = 0; i < n; i++)
+		{
+			if(cur->v[s[i]] != NULL)
+				cur = cur->v[s[i]];
+			else
+				return false;
+		}
+		if(cur->end == true)
+		{
+			display(cur->c);
+			return true;
+		}
+
+		return false;
+	}
+	//								/----------------------------------/
+
+	void del(string &s)
+	{
+		node *start = &root;
+		node *cur = start;
+		int pf = 0;
+		for(int i = 0; i < s.size(); i++)
+		{
+			if(cur->v[s[i]] == NULL)
+				return;
+
+			if(cur->end == true)
+				start = cur->v[s[i]], pf = i + 1;
+			
+			cur = cur->v[s[i]];
+		}
+
+		//	remove contact also
+		cur->end = false;
+		cur->c.name = "";
+		cur->c.ph = "";
+		cur->c.add = "";
+		cur->c.email = "";		
+
+		for(auto next : cur->v)
+			if(next.second != NULL)
+				return;
+
+		// int cnt = 0;
+		// while(start != cur && cnt < 100)
+		// {
+		// 	node *t = start->v[s[pf]];
+		// 	delete start;
+		// 	start = t;
+			
+		// 	cnt++;
+		// }
+	}
+
+} trie;
+
+//--------------------------------------USER OPERATIONS---------------------------/
 void add()
 {
-	fio.open("contacts.dll", ios::app);
 	cin.ignore();
-
-	contact c;
 	cout << "\n\t\t\tAdd a new Contact\n\n\t\t=================================================\n\n" << flush;
 	
+	contact c;
 	get_new_contact(c);
 
 	if(c.name.size() == 0)
 		ending();
-	
 	else
-		fio << c;
-
-	fio.close();
+		trie.insert(c);
 }
 //-------------------------------------------------/
 void view()
 {
-	fio.open("contacts.dll", ios::in);
 	cout << "\n\t\t\tList of All Contacts\n\t\t==================================" << endl;
-
-	contact c;
-	fio >> c;
-	while(not fio.eof())
-	{
-		display(c);
-		fio >> c;
-	}
-
-	fio.close();
+	trie.list_all("", &trie.root, &display);
 	ending();
 }
 //-------------------------------------------------/
-
 void find()
 {
-	fio.open("contacts.dll", ios::in);
 	cin.ignore();
 	string req;
 	get("\n\t\t\tContact Search\n\n\t\t[Name]: ", req);
 	cout << "\n\t\t==================================\n" << flush;
 	
-	int found = 0;
-	contact c;
-	fio >> c;
-	while(not fio.eof())
-	{
-		if(c.name != req)
-		{
-			fio >> c;
-			continue;
-		}
-		found = 1;
-		display(c);
-		fio >> c;
-	}
-	
+	int found = trie.search(req);	
 	if(not found)
-		cout << "No such contact found" << endl;
+		cout << "\t\tNo such contact found" << endl;
 	
-	fio.close();
 	ending();
 }
 //-------------------------------------------------/
 
 void edit()
 {
-	fio.open("contacts.dll", ios::in);
-	tio.open("temp.dat", ios::out);
 	cin.ignore();
-
 	string req;	
 	get("\n\t\t\tEdit Contact\n\n\t\t[Name]: ", req);
 	cout << "\n\t\t==================================\n" << flush;
 	
 	contact c;
-	fio >> c;
-	while(not fio.eof())
+	if(trie.search(req))
 	{
-		if(c.name == req)
+		get_new_contact(c);
+
+		if(c.name.size() == 0)
+			c.name = req;
+		else
 		{
-			display(c);
-			get_new_contact(c);
-			if(c.name.size() == 0)
-				c.name = req;
-		}
-
-		tio << c;
-		fio >> c;
+			trie.del(req);
+			trie.insert(c);
+		}		
 	}
-	
-	fio.close();
-	tio.close();
-
-	remove("contacts.dll");
-	rename("temp.dat", "contacts.dll");
+	else
+		cout << "\t\tNo such contact found" << endl;
 
 	ending();
 }
@@ -182,57 +262,78 @@ void edit()
 
 void del()
 {
-	fio.open("contacts.dll", ios::in);
-	tio.open("temp.dat", ios::out);
 	cin.ignore();
 
 	string req;
 	get("\n\t\t\tDelete Contact\n\n\t\t[Name]: ", req);
-	cout << "\n\t\t==================================\n\n\t\t\tDeleted Contact: " << endl;
+	cout << "\n\t\t==================================\n\n\t\t\tContact to be Deleted: " << endl;
 	
-	contact c;
-	fio >> c;
-	while(not fio.eof())
+	if(trie.search(req))
 	{
-		if(c.name != req)
-			tio << c;
-		else
-			display(c);
-
-		fio >> c;
+		string ch = "n";
+		cout << "\n\t\tPress y to confirm: " << flush;
+		cin >> ch;
+		if(ch == "Y" or ch == "y")
+			trie.del(req);
 	}
-	fio.close();
-	tio.close();
-
-	remove("contacts.dll");
-	rename("temp.dat", "contacts.dll");
+	else
+		cout << "\n\t\t\tNOT FOUND!!" << flush;
 
 	ending();
 }
+//--------------------------------------------------------------------
 
-int main()
+void load()
 {
-	int ch = -1;		// choice
-	while(ch != 0)
+	fio.open("contacts.dll", ios::in);
+	
+	contact c;
+	fio >> c;
+
+	while(not fio.eof())
+	{
+		trie.insert(c);
+		fio >> c;
+	}
+	fio.close();
+}
+//								/----------------------------------/
+void unload()
+{
+	fio.open("contacts.dll", ios::out|ios::trunc);
+
+	trie.list_all("", &trie.root, [](contact &c){fio << c;});
+	
+	fio.close();
+}
+
+//--------------------------------------------------------------------
+
+int32_t main()
+{
+	string ch = "X";		// choice
+	load();
+	while(ch != "0")
 	{
 		ShowMainMenu();
 		cin >> ch;
 
 		system("cls");
 
-		if(ch == 1)		//	add new contact
+		if(ch == "1")		//	add new contact
 			add();
 
-		else if(ch == 2)	//	list all contacts
+		else if(ch == "2")	//	list all contacts
 			view();
 		
-		else if(ch == 3)	//	search a contact
+		else if(ch == "3")	//	search a contact
 			find();
 
-		else if(ch == 4)	// edit a contact
+		else if(ch == "4")	// edit a contact
 			edit();
 
-		else if(ch == 5)	// delete a contact
+		else if(ch == "5")	// delete a contact
 			del();
 	}
+	unload();
 }
