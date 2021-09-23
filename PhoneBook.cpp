@@ -20,7 +20,8 @@ fstream &operator >> (fstream &file, contact &c)
 	getline(file, c.email);
 	return file;
 }
-fstream fio, tio;
+fstream fio;
+void message(string s);
 //--------------------------------MAIN MENU--------------------------------------------
 void ShowMainMenu()
 {
@@ -40,11 +41,12 @@ void ShowMainMenu()
 }
 //----------------------------SMALL FUNCTIONS & MESSAGES-------------------------------/
 
-void no_name()
+void message(string s)
 {
-	cout << "\n\t\t----------------------------" << flush;
-	cout << "\n\t\t Empty Names are not saved! " << flush;
-	cout << "\n\t\t----------------------------" << flush;
+	string se(s.size(), '-');
+	cout << "\n\t\t" << se << flush;
+	cout << "\n\t\t" << s << flush;
+	cout << "\n\t\t" << se << flush;
 }
 
 void get(string dis, string &s)
@@ -59,7 +61,7 @@ void get_new_contact(contact &c)
 	get("\t\tName: ", c.name);
 	if(c.name.size() == 0)
 	{
-		no_name();
+		message(" Empty Names are not saved! ");
 		return;
 	}
 	get("\t\tPhone No.: ", c.ph);
@@ -69,7 +71,7 @@ void get_new_contact(contact &c)
 
 void display(contact &c)
 {
-	cout << "\n\t\tName:\t  \t" << c.name << "\n\t\tPhone No.:\t" << c.ph << "\n\t\tAddress:\t" << c.add << "\n\t\tEmail:\t \t" << c.email << "\n\t\t==================================\n" << flush;
+	cout << "\n\t\tName:\t  \t" << c.name << "\n\t\tPhone No.:\t" << c.ph << "\n\t\tAddress:\t" << c.add << "\n\t\tEmail:\t \t" << c.email << "\n\t\t=======================================\n" << flush;
 }
 
 void ending()
@@ -78,6 +80,8 @@ void ending()
 	system("pause");
 }
 
+void nothing(contact &c) {}
+
 //-----------------------------------TRIE-DATA-STUCTURE---------------------------------------------
 
 struct node
@@ -85,7 +89,6 @@ struct node
 	char data = '?';	
 	contact c;
 
-	// node *v[26];
 	map < char, node * > v;
 	bool end = false;
 
@@ -99,8 +102,9 @@ struct node
 struct TRIE
 {
 	node root;
+	int cnt = 0;
 	
-	void insert(contact &c)
+	bool insert(contact &c)
 	{
 		node *cur = &root;
 		for(int i = 0; i < c.name.size(); i++)
@@ -110,12 +114,15 @@ struct TRIE
 
 			cur = cur->v[c.name[i]];
 		}
+		if(cur->end == true)
+			return false;
+
 		cur->c = c;
 		cur->end = true;
 
-		return;
+		cnt++;
+		return true;
 	}
-	//	node root(r),	insert(val, &root)	//	data variable isnt req.
 	//								/----------------------------------/
 
 	void list_all(string name, node *cur, void (*func)(contact &c))
@@ -134,10 +141,11 @@ struct TRIE
 	}
 	//								/----------------------------------/
 
-	bool search(string &s)
+	int search(string &s, int exact = 0)	//	by default = prefix search
 	{
 		node *cur = &root;
 		int n = s.length();
+		int found = 0;
 		for(int i = 0; i < n; i++)
 		{
 			if(cur->v[s[i]] != NULL)
@@ -145,13 +153,18 @@ struct TRIE
 			else
 				return false;
 		}
-		if(cur->end == true)
+		//	some prefix is found
+		found = 1;
+
+		if((cur->end == true) && exact == 1)
 		{
 			display(cur->c);
-			return true;
+			found = 2;				//	exact name is found
 		}
+		if(not exact)
+			list_all(s, cur, display);
 
-		return false;
+		return found;
 	}
 	//								/----------------------------------/
 
@@ -176,6 +189,7 @@ struct TRIE
 		cur->c.ph = "";
 		cur->c.add = "";
 		cur->c.email = "";
+		cnt--;
 
 		for(auto next : cur->v)
 			if(next.second != NULL)
@@ -190,20 +204,24 @@ struct TRIE
 void add()
 {
 	cin.ignore();
-	cout << "\n\t\t\tAdd a new Contact\n\n\t\t=================================================\n\n" << flush;
+	cout << "\n\t\t\tAdd a new Contact\n\n\t\t==================================\n\n" << flush;
 	
 	contact c;
 	get_new_contact(c);
 
-	if(c.name.size() == 0)
-		ending();
-	else
-		trie.insert(c);
+	if(c.name.size() != 0)
+	{
+		if(trie.insert(c))
+			message(" Added Successfully! ");
+		else
+			message(" Name already exists, try different Name ");
+	}
+	ending();
 }
 //-------------------------------------------------/
 void view()
 {
-	cout << "\n\t\t\tList of All Contacts\n\t\t==================================" << endl;
+	cout << "\n\t\t\tList of All Contacts[" << trie.cnt << "]\n\t\t=======================================" << endl;
 	trie.list_all("", &trie.root, &display);
 	ending();
 }
@@ -213,10 +231,10 @@ void find()
 	cin.ignore();
 	string req;
 	get("\n\t\t\tContact Search\n\n\t\t[Name]: ", req);
-	cout << "\n\t\t==================================\n" << flush;
+	cout << "\n\t\t=======================================\n" << flush;
 	
-	int found = trie.search(req);	
-	if(not found)
+	int found = trie.search(req);
+	if(found == 0)
 		cout << "\t\tNo such contact found" << endl;
 	
 	ending();
@@ -228,20 +246,27 @@ void edit()
 	cin.ignore();
 	string req;	
 	get("\n\t\t\tEdit Contact\n\n\t\t[Name]: ", req);
-	cout << "\n\t\t==================================\n" << flush;
+	cout << "\n\t\t=======================================\n" << flush;
 	
 	contact c;
-	if(trie.search(req))
+	if(trie.search(req, 1) == 2)
 	{
 		get_new_contact(c);
 
 		if(c.name.size() == 0)
-			c.name = req;
-		else
+			;
+		else if(c.name == req)
 		{
 			trie.del(req);
 			trie.insert(c);
-		}		
+		}
+		else
+		{
+			if(trie.insert(c))
+				message(" Edited Successfully ");
+			else
+				message(" Name already exists, try different Name ");
+		}
 	}
 	else
 		cout << "\t\tNo such contact found" << endl;
@@ -256,15 +281,18 @@ void del()
 
 	string req;
 	get("\n\t\t\tDelete Contact\n\n\t\t[Name]: ", req);
-	cout << "\n\t\t==================================\n\n\t\t\tContact to be Deleted: " << endl;
+	cout << "\n\t\t=======================================\n\n\t\t\tContact to be Deleted: " << endl;
 	
-	if(trie.search(req))
+	if(trie.search(req, 1) == 2)
 	{
 		string ch = "n";
 		cout << "\n\t\tPress y to confirm: " << flush;
 		cin >> ch;
 		if(ch == "Y" or ch == "y")
+		{
 			trie.del(req);
+			message(" Deleted Successfully! ");
+		}
 	}
 	else
 		cout << "\n\t\t\tNOT FOUND!!" << flush;
