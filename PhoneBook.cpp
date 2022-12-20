@@ -21,6 +21,7 @@ fstream &operator >> (fstream &file, contact &c)
 	return file;
 }
 fstream fio;
+int changes = 0;
 void message(string s);
 //--------------------------------MAIN MENU--------------------------------------------
 void ShowMainMenu()
@@ -34,6 +35,8 @@ void ShowMainMenu()
 	cout << "\n\t\t[3] Search for a Contact";
 	cout << "\n\t\t[4] Edit a Contact";
 	cout << "\n\t\t[5] Delete a Contact";
+	if(changes > 0)
+		cout << "\n\t\t[6] Save Changes(Not saved yet!)";
 	cout << "\n\t\t[0] Exit";
 	cout << "\n\t\t=========================";
 	cout << "\n\t\tEnter your choice: ";
@@ -41,7 +44,7 @@ void ShowMainMenu()
 }
 //----------------------------SMALL FUNCTIONS & MESSAGES-------------------------------/
 
-void message(string s)
+void message(string s)					//	display simple message
 {
 	string se(s.size(), '-');
 	cout << "\n\t\t" << se << flush;
@@ -49,7 +52,7 @@ void message(string s)
 	cout << "\n\t\t" << se << flush;
 }
 
-void get(string dis, string &s)
+void get(string dis, string &s)			//	get line input with displayed instruction
 {
 	cout << dis << flush;
 	getline(cin, s);
@@ -69,18 +72,16 @@ void get_new_contact(contact &c)
 	get("\t\tEmail: ", c.email);
 }
 
-void display(contact &c)
+void display(contact &c)			//	display contact
 {
 	cout << "\n\t\tName:\t  \t" << c.name << "\n\t\tPhone No.:\t" << c.ph << "\n\t\tAddress:\t" << c.add << "\n\t\tEmail:\t \t" << c.email << "\n\t\t=======================================\n" << flush;
 }
 
-void ending()
+void ending()					//	consious ending 
 {
 	cout << "\n\n" << flush;
 	system("pause");
 }
-
-void nothing(contact &c) {}
 
 //-----------------------------------TRIE-DATA-STUCTURE---------------------------------------------
 
@@ -114,7 +115,7 @@ struct TRIE
 
 			cur = cur->v[c.name[i]];
 		}
-		if(cur->end == true)
+		if(cur->end == true)			//	--> it already existed
 			return false;
 
 		cur->c = c;
@@ -171,6 +172,7 @@ struct TRIE
 	void del(string &s)
 	{
 		node *cur = &root;
+		node *st = &root;
 		int pf = 0;
 		for(int i = 0; i < s.size(); i++)
 		{
@@ -178,7 +180,7 @@ struct TRIE
 				return;
 
 			if(cur->end == true)
-				pf = i;
+				pf = i + 1, st = cur->v[s[i]];
 			
 			cur = cur->v[s[i]];
 		}
@@ -195,7 +197,13 @@ struct TRIE
 			if(next.second != NULL)
 				return;
 
-		delete cur;
+		while(pf < s.size())
+		{
+			node *t = st;
+			st = st->v[pf++];
+			delete t;
+		}
+		delete st;
 	}
 
 } trie;
@@ -212,7 +220,7 @@ void add()
 	if(c.name.size() != 0)
 	{
 		if(trie.insert(c))
-			message(" Added Successfully! ");
+			message(" Added to Buffer! "), changes++;
 		else
 			message(" Name already exists, try different Name ");
 	}
@@ -235,7 +243,7 @@ void find()
 	
 	int found = trie.search(req);
 	if(found == 0)
-		cout << "\t\tNo such contact found" << endl;
+		message(" No such contact found ");
 	
 	ending();
 }
@@ -259,17 +267,21 @@ void edit()
 		{
 			trie.del(req);
 			trie.insert(c);
+			message(" Edited in Buffer "), changes++;
 		}
 		else
 		{
 			if(trie.insert(c))
-				message(" Edited Successfully ");
+			{
+				trie.del(req);
+				message(" Edited in Buffer "), changes++;
+			}
 			else
 				message(" Name already exists, try different Name ");
 		}
 	}
 	else
-		cout << "\t\tNo such contact found" << endl;
+		message(" No such contact found ");
 
 	ending();
 }
@@ -291,7 +303,7 @@ void del()
 		if(ch == "Y" or ch == "y")
 		{
 			trie.del(req);
-			message(" Deleted Successfully! ");
+			message(" Deleted from Buffer "), changes++;
 		}
 	}
 	else
@@ -324,6 +336,15 @@ void unload()
 	
 	fio.close();
 }
+//								/----------------------------------/
+void reload()
+{
+	unload();
+	message(" Saved Successfully! ");
+	ending();
+	load();
+	changes = 0;
+}
 
 //--------------------------------------------------------------------
 
@@ -352,6 +373,9 @@ int32_t main()
 
 		else if(ch == "5")	// delete a contact
 			del();
+
+		else if(ch == "6")	//	save all changes
+			reload();
 	}
 	unload();
 }
